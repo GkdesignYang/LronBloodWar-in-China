@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>铁血山河 · 中国近代战争与解放战争交互历史地图 (1931 九一八事变 — 1958 八二三炮战)</title>
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="atlas-shell">
+    <!-- ═══════════════ 顶部导航与多功能控制栏（自适应防溢出，任何分辨率下按钮均在当前窗口内） ═══════════════ -->
+    <header id="nav-bar">
+      <div class="nav-brand">
+        <span class="brand-seal">山河</span>
+        <div class="brand-titles">
+          <span class="brand-main">铁血山河 · 中国近代战争与解放战争全史舆图</span>
+          <span class="brand-sub">1931 九一八事变 — 1958 八二三炮战 · 动态疆域 · 虚线残影 · 城池溯源 · 将帅行迹</span>
+        </div>
+      </div>
+
+      <!-- 当前历史节点胶囊 -->
+      <div class="nav-stage-pill" id="hdr-stage-pill">
+        <span class="stage-pill-year" id="hdr-year-text">1931年</span>
+        <span class="stage-pill-name" id="hdr-stage-name">九一八事变与三次反围剿</span>
+      </div>
+
+      <!-- 搜索框（支持将帅、名城、重大战役搜索） -->
+      <div class="nav-search-cluster">
+        <div class="search-input-wrap">
+          <span class="search-icon">🔍</span>
+          <input
+            type="text"
+            id="inp-map-search"
+            placeholder="搜将帅/名城/战役：毛泽东、彭德怀、林彪、蒋介石、孙立人、薛岳、山本五十六、长沙..."
+            autocomplete="off"
+          />
+          <div id="search-suggest-box" hidden></div>
+        </div>
+      </div>
+
+      <!-- 视图缩放、录屏、图层与彩蛋工具栏 -->
+      <div class="nav-tools">
+        <div class="nav-zoom-group" title="视图缩放控制">
+          <button class="nav-btn zoom-mini-btn" id="btn-nav-zoom-out" title="缩小视图">➖</button>
+          <span class="nav-zoom-readout" id="nav-zoom-text">100%</span>
+          <button class="nav-btn zoom-mini-btn" id="btn-nav-zoom-in" title="放大视图">➕</button>
+          <button class="nav-btn" id="btn-reset-view" title="恢复 100% 完整全图视野">🗺️ 全图</button>
+          <button class="nav-btn" id="btn-focus-china" title="聚焦中国核心战区视图">🎯 战区</button>
+        </div>
+        <button class="nav-btn active" id="btn-toggle-routes" title="显示/隐藏战役进军路线与动态箭头">🏹 进军箭矢</button>
+        <button class="nav-btn active" id="btn-toggle-ghost" title="显示/隐藏上一阶段朱砂虚线残影边界">⭕ 虚线残影</button>
+        <button class="nav-btn active" id="btn-toggle-terrain" title="显示/隐藏高清山川浮雕底图">⛰️ 地形</button>
+        <button class="nav-btn record-btn" id="btn-open-recorder" title="打开史诗录屏工坊：录制时间轴演进、指定战役事件或历史人物移动路径">🎬 录屏导出</button>
+        <button class="nav-btn quiz-btn" id="btn-start-quiz" title="隐去城池标注，盲猜十道近代重大战役坐标，角逐「大元帅」军衔">🎯 舆图寻址</button>
+      </div>
+    </header>
+
+    <!-- ═══════════════ 中央主工作区（左：交互历史舆图；右：历史编年与兵力详情） ═══════════════ -->
+    <main id="workspace-body">
+      <!-- 交互舆图视口 -->
+      <div id="viewport-frame">
+        <!-- preserveAspectRatio="xMidYMid meet" 确保初始状态完整展示整张全图 -->
+        <svg id="atlas-svg" viewBox="0 0 1000 700" preserveAspectRatio="xMidYMid meet">
+          <defs>
+            <!-- 鲜艳行军箭头定义（解放军/红军/八路军：赤红流光；正面战场/国军：宝蓝；日军/敌军：暗红） -->
+            <marker id="arrow-pla" viewBox="0 0 12 12" refX="8.5" refY="6" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0.5 1.2 L 11 6 L 0.5 10.8 L 3.2 6 Z" fill="#ff1e00" stroke="#fff8eb" stroke-width="0.9" />
+            </marker>
+            <marker id="arrow-kmt" viewBox="0 0 12 12" refX="8.5" refY="6" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0.5 1.2 L 11 6 L 0.5 10.8 L 3.2 6 Z" fill="#1d4ed8" stroke="#fff8eb" stroke-width="0.9" />
+            </marker>
+            <marker id="arrow-enemy" viewBox="0 0 12 12" refX="8.5" refY="6" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0.5 1.2 L 11 6 L 0.5 10.8 L 3.2 6 Z" fill="#8c1d1d" stroke="#fff8eb" stroke-width="0.9" />
+            </marker>
+            <marker id="arrow-journey" viewBox="0 0 12 12" refX="8.5" refY="6" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+              <path d="M 0.5 1 L 11.2 6 L 0.5 11 L 3.4 6 Z" fill="#ff1e00" stroke="#fffdf7" stroke-width="1" />
+            </marker>
+          </defs>
+
+          <!-- 海洋背景底板 -->
+          <rect class="ocean-backdrop" x="-2000" y="-2000" width="5000" height="5000" />
+
+          <!-- 核心可平移缩放图层组 -->
+          <g id="map-canvas">
+            <!-- 1. 地形浮雕层 -->
+            <g id="grp-terrain"></g>
+            <!-- 2. 亚洲周边邻国底图 -->
+            <g id="grp-neighbors"></g>
+            <!-- 3. 政权/根据地/占领区多边形层 -->
+            <g id="grp-polities"></g>
+            <!-- 4. 省界虚线参考层 -->
+            <g id="grp-provinces"></g>
+            <!-- 5. 江河湖泊水系层 -->
+            <g id="grp-rivers"></g>
+            <!-- 6. 【核心细节】上一阶段边界「朱砂色虚线残影」对比层 -->
+            <g id="grp-ghost-diff"></g>
+            <!-- 7. 战役进攻路线与动态流光行军箭头层 -->
+            <g id="grp-corridors"></g>
+            <!-- 8. 战略要塞与海军舰队图层 -->
+            <g id="grp-forts-fleets"></g>
+            <!-- 9. 历史名城与战略重镇标注层 -->
+            <g id="grp-settlements"></g>
+            <!-- 10. 重大战役、重要战斗、关键转折点标注层 -->
+            <g id="grp-milestones"></g>
+            <!-- 11. 【点人溯事】历史人物一生行迹动态弧线层 -->
+            <g id="grp-journey"></g>
+            <!-- 12. 【点地溯源】选中高亮光环层 -->
+            <g id="grp-genealogy"></g>
+            <!-- 13. 【舆图寻址】盲猜落针与测距圆环层 -->
+            <g id="grp-challenge"></g>
+          </g>
+        </svg>
+
+        <!-- ─── 正在录屏实时状态胶囊条 (#recording-live-pill) ─── -->
+        <div id="recording-live-pill" hidden>
+          <span class="rec-dot"></span>
+          <span id="rec-live-status">正在录制：1931—1958 时间线演进 (00:05)</span>
+          <button class="rec-stop-inline-btn" id="btn-rec-stop-inline">⏹ 停止并保存视频</button>
+        </div>
+
+        <!-- ─── 左下角：当前年代政权、军队、装备、人数、要塞、舰队交互图例 (#map-key) ─── -->
+        <aside id="map-key">
+          <div class="map-key-header" id="map-key-toggle" title="点击折叠/展开图例">
+            <div class="map-key-title">
+              <span>⚔️ 政权 · 军队装备 · 要塞舰队图例</span>
+            </div>
+            <span class="map-key-hint">悬停高亮 · 点击聚焦 ▾</span>
+          </div>
+          <div class="map-key-body" id="map-key-body">
+            <!-- 动态渲染：朱砂虚线残影提示 + 政权军队装备列表 + 要塞与舰队芯片 -->
+          </div>
+        </aside>
+
+        <!-- ─── 浮窗 1：「点地溯源 / 战役溯源」全编年卡片 (#genealogy-card) ─── -->
+        <section id="genealogy-card" hidden>
+          <div class="gen-card-header">
+            <div class="gen-kicker" id="gen-kicker">点地溯源 · 1931—1958 历史全编年</div>
+            <div class="gen-title-row">
+              <h2 class="gen-city-name" id="gen-title">北京（北平）</h2>
+              <button class="gen-record-btn" id="btn-gen-record" title="将此战役/城池的镜头聚焦与进军推演录制为视频">🎬 录制此战役/事件</button>
+            </div>
+            <p class="gen-tagline" id="gen-tagline"></p>
+            <button class="card-close-btn" id="btn-close-genealogy" title="关闭溯源卡片">✕</button>
+          </div>
+          <div class="gen-overview-box" id="gen-overview"></div>
+          <div class="gen-timeline-list" id="gen-timeline-list">
+            <!-- 动态渲染该城池或战役从九一八事变到八二三炮战的历次政权更迭与重大事件 -->
+          </div>
+        </section>
+
+        <!-- ─── 浮窗 2：「点人溯事」跟着将帅走一生控制台 (#journey-card) ─── -->
+        <section id="journey-card" hidden>
+          <div class="jrn-top-row">
+            <div class="jrn-person-info">
+              <span class="jrn-person-badge">点人溯事 · 动态行迹</span>
+              <span class="jrn-person-name" id="jrn-name">彭德怀</span>
+              <span class="jrn-person-role" id="jrn-role">中华人民共和国元帅 · 八路军副总司令</span>
+            </div>
+            <div class="jrn-controls">
+              <button class="jrn-btn" id="btn-jrn-prev" title="上一站 (←)">‹ 上一站</button>
+              <button class="jrn-btn" id="btn-jrn-play" title="自动巡礼播放 (空格)">▶ 巡礼播放</button>
+              <button class="jrn-btn" id="btn-jrn-next" title="下一站 (→)">下一站 ›</button>
+              <button class="jrn-btn jrn-rec-btn" id="btn-jrn-record" title="自动从第1站走到最后1站并录制完整移动路径视频">🎬 录制行迹</button>
+              <button class="jrn-btn" id="btn-jrn-close" title="退出人物行迹">✕ 退出</button>
+            </div>
+          </div>
+          <div class="jrn-stop-banner">
+            <div class="jrn-stop-headline">
+              <span id="jrn-stop-place">第 2 站 · 1940年 · 山西武乡（百团大战总部）</span>
+              <span id="jrn-stop-counter">2 / 6</span>
+            </div>
+            <div class="jrn-stop-quote" id="jrn-stop-quote"></div>
+            <div class="jrn-stop-note" id="jrn-stop-note"></div>
+          </div>
+          <div class="jrn-scrubber-row">
+            <span style="font-size:12px;font-weight:700;color:var(--ink-500);">行迹进度</span>
+            <input type="range" id="inp-journey-step" min="0" max="5" value="0" />
+          </div>
+        </section>
+
+        <!-- ─── 浮窗 3：「舆图寻址小试」10道盲猜封「大元帅」考核卡 (#challenge-card) ─── -->
+        <section id="challenge-card" hidden>
+          <div class="quiz-header">
+            <span class="quiz-title">🎯 舆图寻址小试 · 军衔考核</span>
+            <button class="card-close-btn" id="btn-close-quiz" style="position:static;background:rgba(0,0,0,0.08);color:#333;">✕</button>
+          </div>
+          <div class="quiz-stats-bar">
+            <span id="quiz-progress-text">第 1 / 10 题</span>
+            <span id="quiz-score-text">当前总分：0 分</span>
+            <span id="quiz-rank-preview">当前军衔：列兵</span>
+          </div>
+          <div class="quiz-clue-box" id="quiz-clue-text"></div>
+          <div class="quiz-feedback-box" id="quiz-feedback-box" hidden></div>
+          <div class="quiz-rank-award" id="quiz-final-box" hidden></div>
+          <div class="quiz-action-row">
+            <button class="quiz-primary-btn" id="btn-quiz-confirm" disabled>📍 请先在地图上点击落针</button>
+            <button class="quiz-primary-btn" id="btn-quiz-next" hidden>下一道军情题 ›</button>
+          </div>
+        </section>
+
+        <!-- ─── 浮窗 4：「史诗录屏工坊」时间轴 / 指定事件 / 人物移动路径录屏卡 (#recorder-card) ─── -->
+        <section id="recorder-card" hidden>
+          <div class="rec-card-header">
+            <span class="rec-card-title">🎬 铁血山河 · 历史推演与路径录屏工坊</span>
+            <button class="card-close-btn" id="btn-close-recorder" style="position:static;background:rgba(255,255,255,0.18);color:#fff;">✕</button>
+          </div>
+          <div class="rec-card-body">
+            <div class="rec-field-group">
+              <label class="rec-label">1. 选择录制模式：</label>
+              <div class="rec-mode-tabs" id="rec-mode-tabs">
+                <button class="rec-mode-tab active" data-mode="timeline">🎞️ 时间线演进</button>
+                <button class="rec-mode-tab" data-mode="person">👣 人物移动路径</button>
+                <button class="rec-mode-tab" data-mode="event">⚔️ 指定战役/事件</button>
+                <button class="rec-mode-tab" data-mode="free">🖐️ 自由操作录制</button>
+              </div>
+            </div>
+
+            <!-- 模式 A：时间线配置 -->
+            <div class="rec-config-pane" id="rec-pane-timeline">
+              <div class="rec-row">
+                <label>起始节点：</label>
+                <select id="rec-tl-start"></select>
+              </div>
+              <div class="rec-row">
+                <label>结束节点：</label>
+                <select id="rec-tl-end"></select>
+              </div>
+              <div class="rec-row">
+                <label>每节点时长：</label>
+                <select id="rec-tl-speed">
+                  <option value="1800">快速推演 (1.8秒 / 阶段)</option>
+                  <option value="2600" selected>标准史诗 (2.6秒 / 阶段)</option>
+                  <option value="3800">深度详览 (3.8秒 / 阶段)</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- 模式 B：指定人物移动路径配置 -->
+            <div class="rec-config-pane" id="rec-pane-person" hidden>
+              <div class="rec-row">
+                <label>选择人物：</label>
+                <select id="rec-person-select"></select>
+              </div>
+              <div class="rec-row">
+                <label>每站停留：</label>
+                <select id="rec-person-speed">
+                  <option value="2200">紧凑行军 (2.2秒 / 站)</option>
+                  <option value="3000" selected>标准巡礼 (3.0秒 / 站)</option>
+                  <option value="4200">详读生平 (4.2秒 / 站)</option>
+                </select>
+              </div>
+              <p class="rec-hint">💡 将从第 1 站起自动跟随镜头绘制弧线行迹、同步切换历史版图，走完全程后自动导出视频。</p>
+            </div>
+
+            <!-- 模式 C：指定重大战役/历史事件配置 -->
+            <div class="rec-config-pane" id="rec-pane-event" hidden>
+              <div class="rec-row">
+                <label>选择战役/事件：</label>
+                <select id="rec-event-select"></select>
+              </div>
+              <div class="rec-row">
+                <label>推演时长：</label>
+                <select id="rec-event-duration">
+                  <option value="6000">6 秒（全图推近 + 箭矢推演）</option>
+                  <option value="9000" selected>9 秒（全图推近 + 战役详解）</option>
+                  <option value="12000">12 秒（完整战区全景展示）</option>
+                </select>
+              </div>
+              <p class="rec-hint">💡 镜头将从全局视野平滑推进至目标战役战区，动态演示进军路线箭矢与虚线残影。</p>
+            </div>
+
+            <!-- 模式 D：自由操作说明 -->
+            <div class="rec-config-pane" id="rec-pane-free" hidden>
+              <p class="rec-hint">💡 点击开始后，您可以自由拖拽时间轴、缩放地图、点击城池或人物，完成后点击顶部「⏹ 停止并保存视频」即可下载。</p>
+            </div>
+
+            <div class="rec-actions">
+              <button class="rec-start-btn" id="btn-rec-start">🔴 开始自动推演并录制视频</button>
+              <button class="rec-stop-btn" id="btn-rec-stop" hidden>⏹ 停止录制并导出 WebM 视频</button>
+            </div>
+            <div class="rec-footer-note" id="rec-footer-note">
+              ✨ 免权限高清画布合成引擎（1600×1000 · 30FPS），录完即刻自动下载视频文件。
+            </div>
+          </div>
+        </section>
+
+        <!-- ─── 右下角：多功能视图缩放控制面板 (#zoom-controls) ─── -->
+        <div id="zoom-controls">
+          <button class="zoom-btn" id="btn-zoom-in" title="放大地图视图 (以当前视野中心放大)">➕</button>
+          <div class="zoom-slider-wrap" title="拖动调节缩放倍率">
+            <input type="range" id="inp-zoom-slider" min="60" max="600" step="5" value="100" />
+            <span class="zoom-pct-badge" id="zoom-pct-label">100%</span>
+          </div>
+          <button class="zoom-btn" id="btn-zoom-out" title="缩小地图视图">➖</button>
+          <button class="zoom-btn zoom-text-btn" id="btn-zoom-full" title="恢复 100% 初始全图视野">全图</button>
+          <button class="zoom-btn zoom-text-btn" id="btn-zoom-china" title="聚焦中国核心战区">聚焦</button>
+        </div>
+      </div>
+
+      <!-- ═══════════════ 右侧：当前时期综述、统帅名将、重大战役与人物生平侧栏 (#chronicle-pane) ═══════════════ -->
+      <aside id="chronicle-pane">
+        <div class="pane-header">
+          <div class="pane-era-span" id="pane-era-span">1931 — 1936 · 第一阶段</div>
+          <h1 class="pane-era-title" id="pane-era-title">局部抗战与红军长征</h1>
+          <div class="pane-phase-caption" id="pane-phase-caption"></div>
+        </div>
+        <div class="pane-scroll-body" id="pane-scroll-body">
+          <!-- 动态渲染：阶段局势详述、统帅与元帅名将、重大战役列表、或人物详传 -->
+        </div>
+      </aside>
+    </main>
+
+    <!-- ═══════════════ 底部：可拖拽时间轴、20个重大节点胶囊与8大历史时期色块 (#scrubber-dock) ═══════════════ -->
+    <footer id="scrubber-dock">
+      <div class="dock-sync-banner" id="dock-sync-banner">
+        <!-- 动态同步：当前年份 · 统治者/统帅 · 元帅与将军 · 当前版图态势 -->
+      </div>
+      <div class="dock-top-row">
+        <button class="dock-step-btn" id="btn-phase-prev" title="上一历史节点">‹</button>
+        <div class="dock-slider-wrap">
+          <input type="range" id="inp-timeline-range" min="0" max="20" step="1" value="0" />
+          <div id="phase-pills-strip">
+            <!-- 动态渲染 20 个重大节点胶囊 -->
+          </div>
+        </div>
+        <button class="dock-step-btn" id="btn-phase-next" title="下一历史节点">›</button>
+      </div>
+      <div id="period-blocks-bar">
+        <!-- 动态渲染 8 大历史时期色块（1931九一八 → 1958八二三炮战） -->
+      </div>
+    </footer>
+  </div>
+
+  <!-- 全局悬浮提示框 -->
+  <div id="map-tooltip" hidden></div>
+
+  <!-- 核心地理与历史数据脚本 -->
+  <script src="js/china_geo_data.js"></script>
+  <script src="js/atlas_boot.js"></script>
+  <script src="js/roc_geo_base.js"></script>
+  <script src="js/war_snapshots.js"></script>
+  <script src="js/war_data_part1.js"></script>
+  <script src="js/war_data_part2.js"></script>
+  <script src="js/war_data_part3.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
